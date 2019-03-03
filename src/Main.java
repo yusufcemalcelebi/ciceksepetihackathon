@@ -1,17 +1,44 @@
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
-
+	
+	private static int[] clusterMinLimits;
+	private static int[] clusterMaxLimits;
+	private static int deliveryPathSize = 5;
+ 
 	public static void main(String[] args) {
 		Map<String, Point> deliveryPoints = readFile("../dataset/deliveryPoints.csv");
 		Map<String, Point> stores = readFile("../dataset/stores.csv");
 		
+		// Create cluster limit array 
+		clusterMinLimits = new int[] {20, 35, 20};
+		clusterMaxLimits = new int[] {30, 50, 80};
+		
+		ArrayList<Cluster> clusters = createClusters(stores);
+		
+		deliveryDistributionToClusters(clusters, deliveryPoints);
+		
 		System.out.println("Delivery Number : " + deliveryPoints.size());
 		System.out.println("Store Number : " + stores.size());
 		
+		System.out.println(clusters.get(0).getClusterId() + " delivery Count: " + clusters.get(0).deliveryCount);
+		System.out.println(clusters.get(1).getClusterId() + " delivery Count: " + clusters.get(1).deliveryCount);
+		System.out.println(clusters.get(2).getClusterId() + " delivery Count: " + clusters.get(2).deliveryCount);
 		
+		/* Write paths for first cluster
+		System.out.println("\n");
+		 clusters.get(0).getDeliveryPaths().forEach((path -> {
+			 System.out.println("Path List");
+			 path.getPath().forEach(key -> {
+				 System.out.println(key);
+			 });
+			 System.out.println("");
+		 }));
+		*/
 	}
 	
 	public static Map<String, Point> readFile(String filePath) {
@@ -22,9 +49,8 @@ public class Main {
 		String id;
 		
 		try {
-			reader = new BufferedReader(new FileReader(
-					filePath));
-			String line = reader.readLine();
+			reader = new BufferedReader(new FileReader(filePath));
+			String line = reader.readLine(); //ignore column names
 			
 			while ((line = reader.readLine()) != null) {
 				values = parseLine(line);
@@ -47,5 +73,69 @@ public class Main {
 		String[] values = line.split(",");
 		
 		return values;
+	}
+	
+	public static ArrayList<Cluster> createClusters(Map<String, Point> stores) {
+		ArrayList<Cluster> clusters = new ArrayList<Cluster>();
+		AtomicInteger counter = new AtomicInteger(0);
+		
+		stores.forEach((key, value) -> {
+			Cluster cluster = new Cluster(key, value, deliveryPathSize,
+					clusterMinLimits[counter.get()] , clusterMaxLimits[counter.get()]);
+			
+			clusters.add(cluster);
+			
+			counter.getAndIncrement();
+		});
+		
+		return clusters;
+	}
+	
+	public static void deliveryDistributionToClusters(ArrayList<Cluster> clusters, Map<String,
+			Point> deliveryPoints) {
+		
+		AtomicInteger counter = new AtomicInteger(0);
+		
+		while(counter.get() < deliveryPoints.size()) {
+			clusters.forEach((cluster) -> {
+				if (cluster.isThereEnoughCapacity()) {
+					String closestDeliveryKey = findClosestDeliveryPoint(cluster, deliveryPoints);
+					Point deliveryPoint = deliveryPoints.get(closestDeliveryKey);
+					
+					deliveryPoint.clusterId = cluster.getClusterId();
+					cluster.addPoint(closestDeliveryKey, deliveryPoint);
+					
+					counter.incrementAndGet();
+				}
+			});
+		}
+	}
+	
+	private static String findClosestDeliveryPoint(Cluster cluster, Map<String, Point> deliveryPoints) {
+		double minDistance = 99999999999.99;
+		String minDistanceKey = "0";
+		double currentDistance;
+		
+		for (Map.Entry<String, Point> entry : deliveryPoints.entrySet()){
+		    currentDistance = calculateDistance(cluster.getCurrentPoint(), entry.getValue());
+		    
+		    if(currentDistance < minDistance && !entry.getValue().isAssignedToCluster()) {
+		    	
+		    	minDistance = currentDistance;
+		    	
+		    	minDistanceKey = entry.getKey();
+		    }
+		}
+		
+		return minDistanceKey;
+	}
+
+	public static double calculateDistance(Point a, Point b) {
+		double x1 = a.getCoordinateX();
+		double y1 = a.getCoordinateY();
+		double x2 = b.getCoordinateX();
+		double y2 = b.getCoordinateY();
+	   
+	    return Math.hypot(Math.abs(y2 - y1), Math.abs(x2 - x1));
 	}
 }
