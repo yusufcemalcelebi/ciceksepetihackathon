@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -8,7 +9,7 @@ public class Main {
 	
 	private static int[] clusterMinLimits;
 	private static int[] clusterMaxLimits;
-	private static int deliveryPathSize = 5;
+	private static int deliveryPathSize = 3;
  
 	public static void main(String[] args) {
 		Map<String, Point> deliveryPoints = readFile("../dataset/deliveryPoints.csv");
@@ -29,16 +30,41 @@ public class Main {
 		System.out.println(clusters.get(1).getClusterId() + " delivery Count: " + clusters.get(1).deliveryCount);
 		System.out.println(clusters.get(2).getClusterId() + " delivery Count: " + clusters.get(2).deliveryCount);
 		
-		/* Write paths for first cluster
-		System.out.println("\n");
+		writeToTextFile(clusters, deliveryPoints);
+		
+		/*
+		 //Write paths for first cluster
+		System.out.println("\nFor " + clusters.get(0).getClusterId());
 		 clusters.get(0).getDeliveryPaths().forEach((path -> {
-			 System.out.println("Path List");
-			 path.getPath().forEach(key -> {
+			 ArrayList<String> myPath = path.getPath();
+			 
+			 Collections.sort(myPath);
+			 myPath.forEach(key -> {
 				 System.out.println(key);
 			 });
-			 System.out.println("");
 		 }));
+		 
+		System.out.println("\nFor " + clusters.get(1).getClusterId());
+		clusters.get(1).getDeliveryPaths().forEach((path -> {
+			ArrayList<String> myPath = path.getPath();
+				 
+			Collections.sort(myPath);
+			myPath.forEach(key -> {
+				System.out.println(key);
+			});
+		}));
+		
+		System.out.println("\nFor " + clusters.get(2).getClusterId());
+		clusters.get(2).getDeliveryPaths().forEach((path -> {
+			ArrayList<String> myPath = path.getPath();
+				 
+			Collections.sort(myPath);
+			myPath.forEach(key -> {
+				System.out.println(key);
+			});
+		}));
 		*/
+		
 	}
 	
 	public static Map<String, Point> readFile(String filePath) {
@@ -137,5 +163,37 @@ public class Main {
 		double y2 = b.getCoordinateY();
 	   
 	    return Math.hypot(Math.abs(y2 - y1), Math.abs(x2 - x1));
+	}
+	
+	public static void writeToTextFile(ArrayList<Cluster> clusters, Map<String, Point> deliveryPoints) {
+		Map<String, String> dictionary = new HashMap<>();
+	    
+	    dictionary.put("k?rm?z?", "RED");
+	    dictionary.put("ye?il", "GREEN");
+	    dictionary.put("mavi", "BLUE");
+	    
+		try {
+			BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"));
+			
+			clusters.forEach(cluster -> {
+				cluster.getDeliveryPaths().forEach(deliveryPath -> {
+			   		deliveryPath.getPath().forEach(deliveryPointKey -> {
+		    			try {
+		    				Point deliveryPoint = deliveryPoints.get(deliveryPointKey);
+		    				
+							writer.write(deliveryPointKey + "," + deliveryPoint.getCoordinateX() + "," + deliveryPoint.getCoordinateY() + "," + dictionary.get(cluster.getClusterId()));
+							writer.newLine();
+		    			} catch (IOException e) {
+							e.printStackTrace();
+						}
+			    	});
+			    });
+			});
+		    
+		    writer.close();
+		    
+	    } catch(IOException e) {
+	    	e.printStackTrace();
+	    }
 	}
 }
